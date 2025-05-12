@@ -8,6 +8,7 @@ import 'dart:async';
 
 // modelos e telas
 import 'profile_model.dart';
+import 'contact_model.dart';
 import 'profilepage.dart';
 import 'historypage.dart';
 import 'settingspage.dart';
@@ -18,7 +19,10 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(ProfileAdapter());
   await Hive.openBox<Profile>('profileBox');
+  Hive.registerAdapter(ContactAdapter());
+  await Hive.openBox<Contact>('contactsBox');
   runApp(const MyApp());
+
 }
 
 class MyApp extends StatelessWidget {

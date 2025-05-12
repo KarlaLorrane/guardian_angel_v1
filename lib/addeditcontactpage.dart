@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'contact_model.dart';
 
 class AddEditContactPage extends StatefulWidget {
-  const AddEditContactPage({super.key});
+  final Contact? contact; // se for edição
+  const AddEditContactPage({Key? key, this.contact}) : super(key: key);
 
   @override
   State<AddEditContactPage> createState() => _AddEditContactPageState();
@@ -9,17 +12,72 @@ class AddEditContactPage extends StatefulWidget {
 
 class _AddEditContactPageState extends State<AddEditContactPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _relationshipController = TextEditingController();
+  late TextEditingController _nameController;
+  late TextEditingController _phoneController;
+  late String _relationship;
+  late List<bool> _notificationPrefs;
+  late Box<Contact> _box;
 
-  List<bool> _notificationPrefs = [true, false, false]; // SMS, WhatsApp, Email
+  @override
+  void initState() {
+    super.initState();
+    _box = Hive.box<Contact>('contactsBox');
+    // se for edição, preenche campos
+    if (widget.contact != null) {
+      _nameController = TextEditingController(text: widget.contact!.name);
+      _phoneController = TextEditingController(text: widget.contact!.phone);
+      _relationship = widget.contact!.relationship;
+      _notificationPrefs = List.from(widget.contact!.notificationPrefs);
+    } else {
+      _nameController = TextEditingController();
+      _phoneController = TextEditingController();
+      _relationship = '';
+      _notificationPrefs = [true, false, false];
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  void _saveContact() {
+    if (_formKey.currentState!.validate()) {
+      final newContact = Contact(
+        name: _nameController.text,
+        phone: _phoneController.text,
+        relationship: _relationship,
+        notificationPrefs: _notificationPrefs,
+      );
+      if (widget.contact != null) {
+        // edição
+        widget.contact!
+          ..name = newContact.name
+          ..phone = newContact.phone
+          ..relationship = newContact.relationship
+          ..notificationPrefs = newContact.notificationPrefs
+          ..save();
+      } else {
+        // novo
+        _box.add(newContact);
+      }
+      Navigator.pop(context);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Emergency Contact'),
+        backgroundColor: Colors.grey[900],
+        title: Text(
+          widget.contact != null ? 'Edit Contact' : 'Add Contact',
+          style: const TextStyle(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -30,101 +88,89 @@ class _AddEditContactPageState extends State<AddEditContactPage> {
               _buildSectionHeader('Contact Name'),
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
                   hintText: 'Enter contact name',
-                  border: OutlineInputBorder(),
+                  hintStyle: TextStyle(color: Colors.white70),
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a name';
-                  }
-                  return null;
-                },
+                validator: (value) => value!.isEmpty ? 'Please enter a name' : null,
               ),
 
               const SizedBox(height: 20),
               _buildSectionHeader('Phone Number'),
               TextFormField(
                 controller: _phoneController,
+                style: const TextStyle(color: Colors.white),
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: '+1 (000) 000-0000',
-                  border: OutlineInputBorder(),
+                  hintStyle: TextStyle(color: Colors.white70),
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a phone number';
-                  }
-                  return null;
-                },
+                validator: (value) => value!.isEmpty ? 'Please enter a phone number' : null,
               ),
 
               const SizedBox(height: 20),
               _buildSectionHeader('Relationship'),
               DropdownButtonFormField<String>(
-                items: const [
-                  DropdownMenuItem(value: 'Parent', child: Text('Parent')),
-                  DropdownMenuItem(value: 'Spouse', child: Text('Spouse')),
-                  DropdownMenuItem(value: 'Friend', child: Text('Friend')),
-                  DropdownMenuItem(value: 'Doctor', child: Text('Doctor')),
-                ],
-                onChanged: (value) {
-                  _relationshipController.text = value ?? '';
-                },
-                decoration: const InputDecoration(
+                dropdownColor: Colors.grey[900],
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
                   hintText: 'Select relationship',
-                  border: OutlineInputBorder(),
+                  hintStyle: TextStyle(color: Colors.white70),
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select a relationship';
-                  }
-                  return null;
-                },
+                value: _relationship.isNotEmpty ? _relationship : null,
+                items: const [
+                  DropdownMenuItem(value: 'Parent', child: Text('Parent', style: TextStyle(color: Colors.white))),
+                  DropdownMenuItem(value: 'Spouse', child: Text('Spouse', style: TextStyle(color: Colors.white))),
+                  DropdownMenuItem(value: 'Friend', child: Text('Friend', style: TextStyle(color: Colors.white))),
+                  DropdownMenuItem(value: 'Doctor', child: Text('Doctor', style: TextStyle(color: Colors.white))),
+                ],
+                onChanged: (value) => setState(() => _relationship = value!),
+                validator: (value) => value == null ? 'Please select a relationship' : null,
               ),
 
               const SizedBox(height: 20),
               _buildSectionHeader('Notification Preferences'),
-              CheckboxListTile(
-                title: const Text('SMS'),
-                value: _notificationPrefs[0],
-                onChanged: (value) {
-                  setState(() {
-                    _notificationPrefs[0] = value ?? false;
-                  });
-                },
-              ),
-              CheckboxListTile(
-                title: const Text('WhatsApp'),
-                value: _notificationPrefs[1],
-                onChanged: (value) {
-                  setState(() {
-                    _notificationPrefs[1] = value ?? false;
-                  });
-                },
-              ),
-              CheckboxListTile(
-                title: const Text('Email'),
-                value: _notificationPrefs[2],
-                onChanged: (value) {
-                  setState(() {
-                    _notificationPrefs[2] = value ?? false;
-                  });
-                },
+              Theme(
+                data: Theme.of(context).copyWith(unselectedWidgetColor: Colors.white70),
+                child: Column(
+                  children: [
+                    CheckboxListTile(
+                      title: const Text('SMS', style: TextStyle(color: Colors.white)),
+                      activeColor: Colors.blue,
+                      checkColor: Colors.white,
+                      value: _notificationPrefs[0],
+                      onChanged: (val) => setState(() => _notificationPrefs[0] = val!),
+                    ),
+                    CheckboxListTile(
+                      title: const Text('WhatsApp', style: TextStyle(color: Colors.white)),
+                      activeColor: Colors.blue,
+                      checkColor: Colors.white,
+                      value: _notificationPrefs[1],
+                      onChanged: (val) => setState(() => _notificationPrefs[1] = val!),
+                    ),
+                    CheckboxListTile(
+                      title: const Text('Email', style: TextStyle(color: Colors.white)),
+                      activeColor: Colors.blue,
+                      checkColor: Colors.white,
+                      value: _notificationPrefs[2],
+                      onChanged: (val) => setState(() => _notificationPrefs[2] = val!),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 30),
               ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    // Salvar os dados e voltar
-                    Navigator.pop(context);
-                  }
-                },
+                onPressed: _saveContact,
                 style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
                   minimumSize: const Size.fromHeight(50),
                 ),
-                child: const Text('Save Contact'),
+                child: const Text('Save Contact', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -138,19 +184,8 @@ class _AddEditContactPageState extends State<AddEditContactPage> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
-    _relationshipController.dispose();
-    super.dispose();
   }
 }
