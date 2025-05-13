@@ -20,6 +20,11 @@ dependencies:
   sensors_plus: ^3.0.0
   vibration: ^3.1.3
 
+  geolocator: ^9.0.2              # para obter GPS
+  camera: ^0.10.0+4               # para câmera / vídeo
+  path_provider: ^2.0.11          # para gravar temporariamente
+  flutter_email_sender: ^6.0.0    # para enviar e‐mail
+  url_launcher: ^6.1.7            # para abrir SMS / WhatsApp
 
 dev_dependencies:
   flutter_test:
@@ -30,6 +35,7 @@ dev_dependencies:
   build_runner: ^2.3.3
 
   flutter_lints: ^5.0.0
+
 
 flutter:
   uses-material-design: true
