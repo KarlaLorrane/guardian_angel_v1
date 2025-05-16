@@ -12,9 +12,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// modelos e telas
+// modelos
 import 'profile_model.dart';
 import 'contact_model.dart';
+import 'alert_model.dart';
+
+// telas
 import 'profilepage.dart';
 import 'historypage.dart';
 import 'settingspage.dart';
@@ -28,6 +31,8 @@ Future<void> main() async {
   await Hive.openBox<Profile>('profileBox');
   Hive.registerAdapter(ContactAdapter());
   await Hive.openBox<Contact>('contactsBox');
+  Hive.registerAdapter(AlertAdapter());
+await Hive.openBox<Alert>('alertsBox');
 
   // Inicializa câmeras
   final cameras = await availableCameras();
@@ -135,11 +140,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _triggerSOS() async {
+    try {
     final contacts = Hive.box<Contact>('contactsBox').values.toList();
     await SosService(cameras: widget.cameras).sendAlerts(contacts: contacts);
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('Alertas enviados!')));
+  } catch (e, stack) {
+    print('Erro ao acionar SOS: $e');
+    print(stack);
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Erro ao acionar SOS: $e')));
   }
+    }
 
   void _onImpactDetected(double magnitude) {
     if (!_monitoring) return;
@@ -311,6 +323,21 @@ class SosService {
         );
         await FlutterEmailSender.send(email);
       }
+
+      // Salva o alerta no Hive
+      final alertsBox = Hive.box<Alert>('alertsBox');
+      alertsBox.add(Alert(
+        emergencyId: DateTime.now(), // ou use um UUID
+        dateTime: DateTime.now().toIso8601String(),
+        locationUrl: locUrl,
+        photos: snaps.map((f) => f.path).join(','), // ou salve como List<String>
+        video: video.path,
+        message: msg,
+      ));
+
+      //verificar se foram salvos
+      print('Total de alertas salvos: ${alertsBox.length}');
+      print('Último alerta salvo: ${alertsBox.getAt(alertsBox.length - 1)}');
     }
   }
 }
