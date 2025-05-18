@@ -11,6 +11,7 @@ import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:battery_plus/battery_plus.dart';
 
 // modelos
 import 'profile_model.dart';
@@ -298,9 +299,14 @@ class SosService {
   Future<void> sendAlerts({required List<Contact> contacts}) async {
     final pos = await _getLocation();
     final snaps = await _capturePhotos();
-    final video = await _recordVideo();
+    // final video = await _recordVideo();
     final locUrl = 'https://maps.google.com/?q=\${pos.latitude},\${pos.longitude}';
-    final msg = 'SOS EMERGÊNCIA! Local: \$locUrl';
+    final battery = await Battery().batteryLevel;
+    final msg = 'Alerta de emergência! '
+        'Localização: $locUrl '
+        'Bateria: $battery% '
+        'Fotos: ${snaps.map((f) => f.path).join(", ")} ';
+        // 'Vídeo: \${video.path}';
 
     for (var c in contacts) {
       if (c.notificationPrefs[0]) {
@@ -317,9 +323,9 @@ class SosService {
           recipients: [],
           subject: 'SOS – Emergência',
           body: msg,
-          attachmentPaths: [
-            ...snaps.map((f) => f.path), video.path
-          ],
+          // attachmentPaths: [
+          //   ...snaps.map((f) => f.path), video.path
+          // ],
         );
         await FlutterEmailSender.send(email);
       }
@@ -331,8 +337,9 @@ class SosService {
         dateTime: DateTime.now().toIso8601String(),
         locationUrl: locUrl,
         photos: snaps.map((f) => f.path).join(','), // ou salve como List<String>
-        video: video.path,
+        // video: video.path,
         message: msg,
+        batteryLevel: '$battery%',
       ));
 
       //verificar se foram salvos

@@ -21,8 +21,8 @@ class AlertAdapter extends TypeAdapter<Alert> {
       dateTime: fields[1] as String,
       locationUrl: fields[2] as String,
       photos: fields[3] as String,
-      video: fields[4] as String,
       message: fields[5] as String,
+      batteryLevel: fields[6] as String,
     );
   }
 
@@ -38,10 +38,10 @@ class AlertAdapter extends TypeAdapter<Alert> {
       ..write(obj.locationUrl)
       ..writeByte(3)
       ..write(obj.photos)
-      ..writeByte(4)
-      ..write(obj.video)
       ..writeByte(5)
-      ..write(obj.message);
+      ..write(obj.message)
+      ..writeByte(6)
+      ..write(obj.batteryLevel);
   }
 
   @override

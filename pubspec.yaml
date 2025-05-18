@@ -25,6 +25,7 @@ dependencies:
   path_provider: ^2.0.11          # para gravar temporariamente
   flutter_email_sender: ^6.0.0    # para enviar e‐mail
   url_launcher: ^6.1.7            # para abrir SMS / WhatsApp
+  battery_plus: ^6.2.1            # para obter o nível da bateria
 
 dev_dependencies:
   flutter_test:
