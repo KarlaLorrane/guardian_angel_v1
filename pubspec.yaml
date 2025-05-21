@@ -28,6 +28,8 @@ dependencies:
   url_launcher: ^6.1.7            # para abrir SMS / WhatsApp
   battery_plus: ^6.2.1            # para obter o nível da bateria
   geocoding: ^3.0.0               # para obter o endereço a partir do GPS
+  google_maps_flutter: ^2.12.2    # para mostrar o mapa
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
