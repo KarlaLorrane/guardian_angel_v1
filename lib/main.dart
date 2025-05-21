@@ -33,7 +33,7 @@ Future<void> main() async {
   Hive.registerAdapter(ContactAdapter());
   await Hive.openBox<Contact>('contactsBox');
   Hive.registerAdapter(AlertAdapter());
-await Hive.openBox<Alert>('alertsBox');
+  await Hive.openBox<Alert>('alertsBox');
 
   // Inicializa câmeras
   final cameras = await availableCameras();
@@ -340,6 +340,8 @@ class SosService {
         // video: video.path,
         message: msg,
         batteryLevel: '$battery%',
+        latitude: pos.latitude,
+        longitude: pos.longitude,
       ));
 
       //verificar se foram salvos

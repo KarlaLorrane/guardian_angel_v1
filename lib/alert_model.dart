@@ -6,26 +6,36 @@ part 'alert_model.g.dart';
 class Alert extends HiveObject {
   @HiveField(0)
   DateTime emergencyId;
+
   @HiveField(1)
   String dateTime;
+
   @HiveField(2)
   String locationUrl;
+
   @HiveField(3)
   String photos;
-  // @HiveField(4)
-  // String video;
-  @HiveField(5)
+
+  @HiveField(4)
   String message;
-  @HiveField(6)
+
+  @HiveField(5)
   String batteryLevel;
-  
+
+  @HiveField(6)
+  double latitude;
+
+  @HiveField(7)
+  double longitude;
+
   Alert({
     required this.emergencyId,
-    required this.dateTime, 
+    required this.dateTime,
     required this.locationUrl,
     required this.photos,
-    // required this.video,
     required this.message,
     required this.batteryLevel,
-    });
+    required this.latitude,
+    required this.longitude,
+  });
 }

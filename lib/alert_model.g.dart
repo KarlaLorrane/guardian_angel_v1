@@ -21,15 +21,17 @@ class AlertAdapter extends TypeAdapter<Alert> {
       dateTime: fields[1] as String,
       locationUrl: fields[2] as String,
       photos: fields[3] as String,
-      message: fields[5] as String,
-      batteryLevel: fields[6] as String,
+      message: fields[4] as String,
+      batteryLevel: fields[5] as String,
+      latitude: fields[6] as double,
+      longitude: fields[7] as double,
     );
   }
 
   @override
   void write(BinaryWriter writer, Alert obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.emergencyId)
       ..writeByte(1)
@@ -38,10 +40,14 @@ class AlertAdapter extends TypeAdapter<Alert> {
       ..write(obj.locationUrl)
       ..writeByte(3)
       ..write(obj.photos)
-      ..writeByte(5)
+      ..writeByte(4)
       ..write(obj.message)
+      ..writeByte(5)
+      ..write(obj.batteryLevel)
       ..writeByte(6)
-      ..write(obj.batteryLevel);
+      ..write(obj.latitude)
+      ..writeByte(7)
+      ..write(obj.longitude);
   }
 
   @override
