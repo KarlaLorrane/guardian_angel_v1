@@ -15,6 +15,7 @@ dependencies:
   hive_flutter: ^1.1.0
 
   cupertino_icons: ^1.0.8
+  intl: ^0.19.0
 
   # Acelerometro
   sensors_plus: ^3.0.0
@@ -25,6 +26,9 @@ dependencies:
   path_provider: ^2.0.11          # para gravar temporariamente
   flutter_email_sender: ^6.0.0    # para enviar e‐mail
   url_launcher: ^6.1.7            # para abrir SMS / WhatsApp
+  battery_plus: ^6.2.1            # para obter o nível da bateria
+  geocoding: ^3.0.0               # para obter o endereço a partir do GPS
+  google_maps_flutter: ^2.12.2    # para mostrar o mapa
 
 dev_dependencies:
   flutter_test:
