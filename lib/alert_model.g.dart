@@ -20,7 +20,7 @@ class AlertAdapter extends TypeAdapter<Alert> {
       emergencyId: fields[0] as DateTime,
       dateTime: fields[1] as String,
       locationUrl: fields[2] as String,
-      photos: fields[3] as String,
+      photos: (fields[3] as List).cast<String>(),
       message: fields[4] as String,
       batteryLevel: fields[5] as String,
       latitude: fields[6] as double,
