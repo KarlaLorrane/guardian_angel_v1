@@ -14,7 +14,7 @@ class Alert extends HiveObject {
   String locationUrl;
 
   @HiveField(3)
-  String photos;
+  List<String> photos;
 
   @HiveField(4)
   String message;

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:vibration/vibration.dart';
@@ -43,7 +42,7 @@ Future<void> main() async {
 
 class MyApp extends StatelessWidget {
   final List<CameraDescription> cameras;
-  const MyApp({Key? key, required this.cameras}) : super(key: key);
+  const MyApp({super.key, required this.cameras});
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +123,7 @@ class _GuardianHomePageState extends State<GuardianHomePage> {
 
 class HomeScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
-  const HomeScreen({Key? key, required this.cameras}) : super(key: key);
+  const HomeScreen({super.key, required this.cameras});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -180,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Future.delayed(const Duration(seconds: 30), () async {
       if (!responded) {
-        if (await Vibration.hasVibrator() ?? false) {
+        if (await Vibration.hasVibrator()) {
           for (int i = 0; i < 3; i++) {
             Vibration.vibrate(duration: 500);
             await Future.delayed(const Duration(seconds: 1));
@@ -297,7 +296,13 @@ class SosService {
   }
 
   Future<void> sendAlerts({required List<Contact> contacts}) async {
-    final pos = await _getLocation();
+    Position? pos;
+    try {
+      pos = await _getLocation();
+    } catch (e) {
+      print('Erro ao obter localização: $e');
+      // Você pode definir valores padrão ou nulos
+    }
     final snaps = await _capturePhotos();
     // final video = await _recordVideo();
     final locUrl = 'https://maps.google.com/?q=\${pos.latitude},\${pos.longitude}';
@@ -315,7 +320,7 @@ class SosService {
       }
       if (c.notificationPrefs[1]) {
         final num = c.phone.replaceAll(RegExp(r'[^0-9]'), '');
-        final uri = Uri.parse('https://wa.me/\$num?text=\${Uri.encodeComponent(msg)}');
+        final uri = Uri.parse('https://wa.me/$num?text=${Uri.encodeComponent(msg)}');
         await launchUrl(uri);
       }
       if (c.notificationPrefs[2]) {
@@ -330,23 +335,22 @@ class SosService {
         await FlutterEmailSender.send(email);
       }
 
-      // Salva o alerta no Hive
-      final alertsBox = Hive.box<Alert>('alertsBox');
-      alertsBox.add(Alert(
-        emergencyId: DateTime.now(), // ou use um UUID
-        dateTime: DateTime.now().toIso8601String(),
-        locationUrl: locUrl,
-        photos: snaps.map((f) => f.path).join(','), // ou salve como List<String>
-        // video: video.path,
-        message: msg,
-        batteryLevel: '$battery%',
-        latitude: pos.latitude,
-        longitude: pos.longitude,
-      ));
-
-      //verificar se foram salvos
-      print('Total de alertas salvos: ${alertsBox.length}');
-      print('Último alerta salvo: ${alertsBox.getAt(alertsBox.length - 1)}');
+      
     }
+    // Salva o alerta no Hive (fora do for)
+    final alertsBox = Hive.box<Alert>('alertsBox');
+    print('Salvando alerta...');
+    alertsBox.add(Alert(
+      emergencyId: DateTime.now(),
+      dateTime: DateTime.now().toIso8601String(),
+      locationUrl: pos != null ? 'https://maps.google.com/?q=${pos.latitude},${pos.longitude}' : 'Sem localização',
+      photos: snaps.map((f) => f.path).toList(),
+      message: msg,
+      batteryLevel: '$battery%',
+      latitude: pos?.latitude ?? 0.0,
+      longitude: pos?.longitude ?? 0.0,
+    ));
+    print('Total de alertas salvos: ${alertsBox.length}');
+    print('Último alerta salvo: ${alertsBox.getAt(alertsBox.length - 1)}');
   }
 }
