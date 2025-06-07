@@ -259,10 +259,16 @@ class SosService {
   final List<CameraDescription> cameras;
   SosService({required this.cameras});
 
-  Future<Position> _getLocation() async {
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+Future<Position> _getLocation() async {
+  LocationPermission permission = await Geolocator.checkPermission();
+  if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+    permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      throw Exception('Permissão de localização negada');
+    }
   }
-
+  return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+}
   Future<List<File>> _capturePhotos() async {
     final snaps = <File>[];
     for (var cam in cameras) {
