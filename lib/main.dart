@@ -1,3 +1,4 @@
+// main.dart
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
@@ -11,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:battery_plus/battery_plus.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 // modelos
 import 'profile_model.dart';
@@ -150,28 +152,102 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _onImpactDetected(double magnitude) {
+  void _onImpactDetected(double magnitude) async {
     if (!_monitoring) return;
     setState(() => _monitoring = false);
     _accelSub.cancel();
+
+    final profileBox = Hive.box<Profile>('profileBox');
+    final profile = profileBox.isNotEmpty ? profileBox.getAt(0) : null;
+    final fullName = profile?.fullName ?? 'N/A';
+    final bloodType = profile?.bloodType ?? 'N/A';
+    final medicalConditions = profile?.medicalConditions ?? 'N/A';
+    final vehicleInfo = profile?.vehicleInfo ?? 'N/A';
+
+    Position? position;
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        permission = await Geolocator.requestPermission();
+      }
+      position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    } catch (_) {
+      position = null;
+    }
+
+    final locationText = position != null
+        ? 'Latitude: ${position.latitude}, Longitude: ${position.longitude}'
+        : 'Localização indisponível';
 
     bool responded = false;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text('Impacto Detectado'),
-        content: Text('Impacto de $magnitude m/s². Está tudo bem?'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              responded = true;
-              Navigator.of(context).pop();
-            },
-            child: const Text('Estou bem'),
+      builder: (_) {
+        final dialogWidth = MediaQuery.of(context).size.width * 0.95;
+        final dialogHeight = MediaQuery.of(context).size.height * 0.65;
+
+        return AlertDialog(
+          title: const Text('Impacto Detectado'),
+          content: SizedBox(
+            width: dialogWidth,
+            height: dialogHeight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Text('''
+Impacto de ${magnitude.toStringAsFixed(1)} m/s². Está tudo bem?
+
+Informações do Perfil:
+- Nome: $fullName
+- Tipo Sanguíneo: $bloodType
+- Condições Médicas: $medicalConditions
+- Veículo: $vehicleInfo
+- Localização: $locationText
+'''),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (position != null)
+                  SizedBox(
+                    height: dialogHeight * 0.4,
+                    child: GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: LatLng(position.latitude, position.longitude),
+                        zoom: 16,
+                      ),
+                      markers: {
+                        Marker(
+                          markerId: const MarkerId('impact_location'),
+                          position: LatLng(position.latitude, position.longitude),
+                        ),
+                      },
+                      zoomControlsEnabled: false,
+                      myLocationButtonEnabled: false,
+                      liteModeEnabled: true,
+                    ),
+                  )
+                else
+                  const Text(
+                    'Mapa indisponível (sem localização)',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+              ],
+            ),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                responded = true;
+                Navigator.of(context).pop();
+              },
+              child: const Text('Estou bem'),
+            ),
+          ],
+        );
+      },
     );
 
     Future.delayed(const Duration(seconds: 30), () async {
@@ -259,16 +335,17 @@ class SosService {
   final List<CameraDescription> cameras;
   SosService({required this.cameras});
 
-Future<Position> _getLocation() async {
-  LocationPermission permission = await Geolocator.checkPermission();
-  if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-    permission = await Geolocator.requestPermission();
+  Future<Position> _getLocation() async {
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-      throw Exception('Permissão de localização negada');
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        throw Exception('Permissão de localização negada');
+      }
     }
+    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
   }
-  return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-}
+
   Future<List<File>> _capturePhotos() async {
     final snaps = <File>[];
     for (var cam in cameras) {
