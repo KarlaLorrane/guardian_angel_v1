@@ -14,6 +14,7 @@ class _AddEditContactPageState extends State<AddEditContactPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
+  late TextEditingController _emailController;
   late String _relationship;
   late List<bool> _notificationPrefs;
   late Box<Contact> _box;
@@ -22,15 +23,16 @@ class _AddEditContactPageState extends State<AddEditContactPage> {
   void initState() {
     super.initState();
     _box = Hive.box<Contact>('contactsBox');
-    // se for edição, preenche campos
     if (widget.contact != null) {
       _nameController = TextEditingController(text: widget.contact!.name);
       _phoneController = TextEditingController(text: widget.contact!.phone);
+      _emailController = TextEditingController(text: widget.contact!.email);
       _relationship = widget.contact!.relationship;
       _notificationPrefs = List.from(widget.contact!.notificationPrefs);
     } else {
       _nameController = TextEditingController();
       _phoneController = TextEditingController();
+      _emailController = TextEditingController();
       _relationship = '';
       _notificationPrefs = [true, false, false];
     }
@@ -40,6 +42,7 @@ class _AddEditContactPageState extends State<AddEditContactPage> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -48,19 +51,19 @@ class _AddEditContactPageState extends State<AddEditContactPage> {
       final newContact = Contact(
         name: _nameController.text,
         phone: _phoneController.text,
+        email: _emailController.text,
         relationship: _relationship,
         notificationPrefs: _notificationPrefs,
       );
       if (widget.contact != null) {
-        // edição
         widget.contact!
           ..name = newContact.name
           ..phone = newContact.phone
+          ..email = newContact.email
           ..relationship = newContact.relationship
           ..notificationPrefs = newContact.notificationPrefs
           ..save();
       } else {
-        // novo
         _box.add(newContact);
       }
       Navigator.pop(context);
@@ -112,6 +115,20 @@ class _AddEditContactPageState extends State<AddEditContactPage> {
               ),
 
               const SizedBox(height: 20),
+              _buildSectionHeader('Email'),
+              TextFormField(
+                controller: _emailController,
+                style: const TextStyle(color: Colors.white),
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'example@email.com',
+                  hintStyle: TextStyle(color: Colors.white70),
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (value) => value!.isEmpty ? 'Please enter an email address' : null,
+              ),
+
+              const SizedBox(height: 20),
               _buildSectionHeader('Relationship'),
               DropdownButtonFormField<String>(
                 dropdownColor: Colors.grey[900],
@@ -144,13 +161,6 @@ class _AddEditContactPageState extends State<AddEditContactPage> {
                       checkColor: Colors.white,
                       value: _notificationPrefs[0],
                       onChanged: (val) => setState(() => _notificationPrefs[0] = val!),
-                    ),
-                    CheckboxListTile(
-                      title: const Text('WhatsApp', style: TextStyle(color: Colors.white)),
-                      activeColor: Colors.blue,
-                      checkColor: Colors.white,
-                      value: _notificationPrefs[1],
-                      onChanged: (val) => setState(() => _notificationPrefs[1] = val!),
                     ),
                     CheckboxListTile(
                       title: const Text('Email', style: TextStyle(color: Colors.white)),

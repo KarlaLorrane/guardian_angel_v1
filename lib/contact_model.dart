@@ -13,11 +13,14 @@ class Contact extends HiveObject {
   String relationship;
   @HiveField(3)
   List<bool> notificationPrefs;
+  @HiveField(4)
+  String? email;
 
   Contact({
     required this.name,
     required this.phone,
     required this.relationship,
     required this.notificationPrefs,
+    required this.email,
   });
 }

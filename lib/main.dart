@@ -25,7 +25,6 @@ import 'settingspage.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializa Hive
   await Hive.initFlutter();
   Hive.registerAdapter(ProfileAdapter());
   await Hive.openBox<Profile>('profileBox');
@@ -33,8 +32,8 @@ Future<void> main() async {
   await Hive.openBox<Contact>('contactsBox');
   Hive.registerAdapter(AlertAdapter());
   await Hive.openBox<Alert>('alertsBox');
+  await Hive.openBox('settingsBox');
 
-  // Inicializa câmeras
   final cameras = await availableCameras();
 
   runApp(MyApp(cameras: cameras));
@@ -141,17 +140,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _triggerSOS() async {
     try {
-    final contacts = Hive.box<Contact>('contactsBox').values.toList();
-    await SosService(cameras: widget.cameras).sendAlerts(contacts: contacts);
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Alertas enviados!')));
-  } catch (e, stack) {
-    print('Erro ao acionar SOS: $e');
-    print(stack);
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('Erro ao acionar SOS: $e')));
-  }
+      final contacts = Hive.box<Contact>('contactsBox').values.toList();
+      await SosService(cameras: widget.cameras).sendAlerts(contacts: contacts);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alertas enviados!')));
+    } catch (e, stack) {
+      print('Erro ao acionar SOS: $e');
+      print(stack);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao acionar SOS: $e')));
     }
+  }
 
   void _onImpactDetected(double magnitude) {
     if (!_monitoring) return;
@@ -164,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: const Text('Impacto Detectado'),
-        content: Text('Impacto de \$magnitude m/s². Está tudo bem?'),
+        content: Text('Impacto de $magnitude m/s². Está tudo bem?'),
         actions: [
           TextButton(
             onPressed: () {
@@ -185,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
             await Future.delayed(const Duration(seconds: 1));
           }
         }
-        Navigator.of(context).pop();
+        if (Navigator.canPop(context)) Navigator.of(context).pop();
         await _triggerSOS();
       }
     });
@@ -282,75 +279,45 @@ class SosService {
     return snaps;
   }
 
-  Future<File> _recordVideo({int seconds = 5}) async {
-    final back = cameras.firstWhere((c) => c.lensDirection == CameraLensDirection.back);
-    final controller = CameraController(back, ResolutionPreset.high);
-    await controller.initialize();
-    final dir = await getTemporaryDirectory();
-    final path = '${dir.path}/sos.mp4';
-    await controller.startVideoRecording();
-    await Future.delayed(Duration(seconds: seconds));
-    final fileX = await controller.stopVideoRecording();
-    await controller.dispose();
-    return File(fileX.path);
-  }
-
   Future<void> sendAlerts({required List<Contact> contacts}) async {
     Position? pos;
     try {
       pos = await _getLocation();
     } catch (e) {
       print('Erro ao obter localização: $e');
-      // Você pode definir valores padrão ou nulos
     }
+
     final snaps = await _capturePhotos();
-    // final video = await _recordVideo();
-    final locUrl = 'https://maps.google.com/?q=\${pos.latitude},\${pos.longitude}';
+    final locUrl = pos != null ? 'https://maps.google.com/?q=${pos.latitude},${pos.longitude}' : 'Localização indisponível';
     final battery = await Battery().batteryLevel;
-    final msg = 'Alerta de emergência! '
-        'Localização: $locUrl '
-        'Bateria: $battery% '
-        'Fotos: ${snaps.map((f) => f.path).join(", ")} ';
-        // 'Vídeo: \${video.path}';
+    final msg = 'Alerta de emergência!\nLocalização: $locUrl\nBateria: $battery%';
 
     for (var c in contacts) {
       if (c.notificationPrefs[0]) {
-        final uri = Uri.parse('sms:\${c.phone}?body=\${Uri.encodeComponent(msg)}');
-        await launchUrl(uri);
-      }
-      if (c.notificationPrefs[1]) {
-        final num = c.phone.replaceAll(RegExp(r'[^0-9]'), '');
-        final uri = Uri.parse('https://wa.me/$num?text=${Uri.encodeComponent(msg)}');
+        final uri = Uri.parse('sms:${c.phone}?body=${Uri.encodeComponent(msg)}');
         await launchUrl(uri);
       }
       if (c.notificationPrefs[2]) {
         final email = Email(
-          recipients: [],
+          recipients: [c.email ?? 'default@email.com'],
           subject: 'SOS – Emergência',
           body: msg,
-          // attachmentPaths: [
-          //   ...snaps.map((f) => f.path), video.path
-          // ],
+          attachmentPaths: snaps.map((f) => f.path).toList(),
         );
         await FlutterEmailSender.send(email);
       }
-
-      
     }
-    // Salva o alerta no Hive (fora do for)
+
     final alertsBox = Hive.box<Alert>('alertsBox');
-    print('Salvando alerta...');
     alertsBox.add(Alert(
       emergencyId: DateTime.now(),
       dateTime: DateTime.now().toIso8601String(),
-      locationUrl: pos != null ? 'https://maps.google.com/?q=${pos.latitude},${pos.longitude}' : 'Sem localização',
+      locationUrl: locUrl,
       photos: snaps.map((f) => f.path).toList(),
       message: msg,
       batteryLevel: '$battery%',
       latitude: pos?.latitude ?? 0.0,
       longitude: pos?.longitude ?? 0.0,
     ));
-    print('Total de alertas salvos: ${alertsBox.length}');
-    print('Último alerta salvo: ${alertsBox.getAt(alertsBox.length - 1)}');
   }
 }

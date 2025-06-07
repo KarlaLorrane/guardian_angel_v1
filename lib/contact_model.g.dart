@@ -21,13 +21,14 @@ class ContactAdapter extends TypeAdapter<Contact> {
       phone: fields[1] as String,
       relationship: fields[2] as String,
       notificationPrefs: (fields[3] as List).cast<bool>(),
+      email: fields[4] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Contact obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -35,7 +36,9 @@ class ContactAdapter extends TypeAdapter<Contact> {
       ..writeByte(2)
       ..write(obj.relationship)
       ..writeByte(3)
-      ..write(obj.notificationPrefs);
+      ..write(obj.notificationPrefs)
+      ..writeByte(4)
+      ..write(obj.email);
   }
 
   @override
