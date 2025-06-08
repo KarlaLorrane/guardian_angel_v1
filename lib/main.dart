@@ -159,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final profileBox = Hive.box<Profile>('profileBox');
     final profile = profileBox.isNotEmpty ? profileBox.getAt(0) : null;
-    final fullName = profile?.fullName ?? 'N/A';
+    final fullName = profile?.name ?? 'N/A';
     final bloodType = profile?.bloodType ?? 'N/A';
     final medicalConditions = profile?.medicalConditions ?? 'N/A';
     final vehicleInfo = profile?.vehicleInfo ?? 'N/A';
@@ -363,6 +363,14 @@ class SosService {
   }
 
   Future<void> sendAlerts({required List<Contact> contacts}) async {
+    final profileBox = Hive.box<Profile>('profileBox');
+    final profile = profileBox.isNotEmpty ? profileBox.getAt(0) : null;
+
+    final fullName = profile?.name ?? 'N/A';
+    final bloodType = profile?.bloodType ?? 'N/A';
+    final medicalConditions = profile?.medicalConditions ?? 'N/A';
+    final vehicleInfo = profile?.vehicleInfo ?? 'N/A';
+
     Position? pos;
     try {
       pos = await _getLocation();
@@ -373,7 +381,19 @@ class SosService {
     final snaps = await _capturePhotos();
     final locUrl = pos != null ? 'https://maps.google.com/?q=${pos.latitude},${pos.longitude}' : 'Localização indisponível';
     final battery = await Battery().batteryLevel;
-    final msg = 'Alerta de emergência!\nLocalização: $locUrl\nBateria: $battery%';
+    //final msg = 'Alerta de emergência!\nLocalização: $locUrl\nBateria: $battery%' ;
+    final msg = '''
+    ⚠️ Alerta de Emergência!
+
+    📍 Localização: $locUrl
+    🔋 Bateria: $battery%
+
+    🧾 Informações do Perfil:
+    - Nome: $fullName
+    - Tipo Sanguíneo: $bloodType
+    - Condições Médicas: $medicalConditions
+    - Veículo: $vehicleInfo
+    ''';
 
     for (var c in contacts) {
       if (c.notificationPrefs[0]) {
