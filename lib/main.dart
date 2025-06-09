@@ -1,4 +1,3 @@
-// main.dart
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
@@ -14,12 +13,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-// modelos
 import 'profile_model.dart';
 import 'contact_model.dart';
 import 'alert_model.dart';
 
-// telas
 import 'profilepage.dart';
 import 'historypage.dart';
 import 'settingspage.dart';
@@ -132,19 +129,32 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _monitoring = false;
+  bool _sendingSOS = false;
+  bool _stopSendingSOS = false;
+  Timer? _sosTimer;
   late StreamSubscription<AccelerometerEvent> _accelSub;
 
   @override
   void dispose() {
     if (_monitoring) _accelSub.cancel();
+    _sosTimer?.cancel(); // Cancelar o envio contínuo ao sair
     super.dispose();
   }
 
-  Future<void> _triggerSOS() async {
+  Future<void> _triggerSOS({bool isRepeated = false}) async {
     try {
       final contacts = Hive.box<Contact>('contactsBox').values.toList();
+      if (isRepeated) {
+        // Verificar a bateria antes de enviar SOS repetido
+        final battery = await Battery().batteryLevel;
+        if (battery <= 15) {
+          _stopSendingSOS = true; // Parar o envio de alertas se a bateria for menor que 15%
+          return;
+        }
+      }
+
       await SosService(cameras: widget.cameras).sendAlerts(contacts: contacts);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alertas enviados!')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alerta enviado!')));
     } catch (e, stack) {
       print('Erro ao acionar SOS: $e');
       print(stack);
@@ -260,8 +270,30 @@ Informações do Perfil:
         }
         if (Navigator.canPop(context)) Navigator.of(context).pop();
         await _triggerSOS();
+        _startSOSLoop(); // Iniciar o loop de envio repetido após o impacto
       }
     });
+  }
+
+  // Função para iniciar o envio contínuo
+  void _startSOSLoop() {
+    if (_sendingSOS || _stopSendingSOS) return;
+    _sendingSOS = true;
+    _sosTimer = Timer.periodic(const Duration(minutes: 15), (timer) async {
+      if (_stopSendingSOS) {
+        _sosTimer?.cancel();
+        return;
+      }
+      await _triggerSOS(isRepeated: true); // Enviar SOS repetido
+    });
+  }
+
+  // Função para parar o envio contínuo de SOS
+  void _stopSOSLoop() {
+    setState(() {
+      _stopSendingSOS = true;
+    });
+    _sosTimer?.cancel();
   }
 
   void _toggleMonitoring() {
@@ -381,7 +413,6 @@ class SosService {
     final snaps = await _capturePhotos();
     final locUrl = pos != null ? 'https://maps.google.com/?q=${pos.latitude},${pos.longitude}' : 'Localização indisponível';
     final battery = await Battery().batteryLevel;
-    //final msg = 'Alerta de emergência!\nLocalização: $locUrl\nBateria: $battery%' ;
     final msg = '''
     ⚠️ Alerta de Emergência!
 
